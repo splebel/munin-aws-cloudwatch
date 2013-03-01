@@ -1,0 +1,83 @@
+#!/bin/sh
+
+DIMENSIONS=Currency=USD
+NAMESPACE=AWS/Billing
+METRICNAME=EstimatedCharges
+
+ACCOUNT=$(basename $0|grep -P -o '(?<=aws_estimatedcharges_).*')
+
+if [ -z "$ACCOUNT" ]; then
+	echo 'Cannot read account name' >&2
+	exit 1
+fi
+
+case $1 in
+	config)
+		echo "graph_title Estimated charges for $ACCOUNT"
+		echo 'graph_vlabel $USD'
+		echo "graph_category $NAMESPACE"
+		echo 'current.label monthly current cost'
+		echo 'estimated.label estimated monthly cost'
+		exit 0;;
+esac
+
+if [ -z "$JAVA_HOME" ]; then
+	JAVA_HOME=$(readlink -f $(which java)|grep -P -o '.*(?=/bin/java)')
+fi
+
+if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+	echo 'AWS ID not specified. Set env.AWS_ACCESS_KEY_ID' >&2
+	exit 1
+fi
+
+if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+	echo 'AWS Secret not specified. Set env.AWS_SECRET_ACCESS_KEY' >&2
+	exit 1
+fi
+
+if [ ! -x $AWS_CLOUDWATCH_HOME/bin/mon-get-stats ]; then
+	echo 'Cannot execute mon-get-stats. Set env.AWS_CLOUDWATCH_HOME' >&2
+	exit 1
+fi
+
+TMPFILE=$(mktemp)
+if [ ! -w $TMPFILE ]; then
+	echo "Cannot write to temp file $TMPFILE" >&2
+	exit 1
+fi
+
+export AWS_CLOUDWATCH_HOME
+export JAVA_HOME
+
+# First of the month ?
+if [ $(date +%d) -eq 1 ]; then
+	STARTTIME=$(date -u --iso-8601=seconds --date="$(date -u +%m/%d/%Y)")
+else
+	STARTTIME=$(date -u --iso-8601=seconds --date='24 minutes ago')
+fi
+
+
+$AWS_CLOUDWATCH_HOME/bin/mon-get-stats $METRICNAME -I $AWS_ACCESS_KEY_ID -S $AWS_SECRET_ACCESS_KEY -n $NAMESPACE --dimensions $DIMENSIONS -s Maximum --period 60 --start-time $STARTTIME > $TMPFILE
+
+if [ $? -ne 0 ]; then
+	echo 'Failed to run mon-get-stats' >&2
+	rm $TMPFILE
+	exit 1
+fi
+
+CURRENT=$(tail -n1 $TMPFILE|awk '{print $3}')
+
+MONTH_TS=$(date -u +%s --date="$(date -u +%m/%d/%Y)")
+REPORT_TS=$(date -u +%s --date="$(tail -n1 $TMPFILE|awk '{print $1 " " $2}')")
+ELAPSED_MIN=$((($REPORT_TS - $MONTH_TS ) / 60))
+
+
+ESTIMATED=$(echo "$CURRENT * 86400 / $ELAPSED_MIN"|bc)
+
+
+rm $TMPFILE
+
+echo "current.value $CURRENT"
+echo "estimated.value $ESTIMATED"
+
+exit 0
