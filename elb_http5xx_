@@ -1,10 +1,10 @@
 #!/bin/sh
 
+LBNAME=$(basename $0|grep -P -o '(?<=elb_http5xx_).*')
+
 DIMENSIONS=LoadBalancerName=$LBNAME
 NAMESPACE=AWS/ELB
 METRICNAME=HTTPCode_Backend_5XX
-
-LBNAME=$(basename $0|grep -P -o '(?<=elb_http5xx_).*')
 
 if [ -z "$LBNAME" ]; then
 	echo 'Cannot read lb name' >&2

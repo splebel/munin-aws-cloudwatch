@@ -1,10 +1,10 @@
 #!/bin/sh
 
+LBNAME=$(basename $0|grep -P -o '(?<=elb_requests_).*')
+
 DIMENSIONS=LoadBalancerName=$LBNAME
 NAMESPACE=AWS/ELB
 METRICNAME=RequestCount
-
-LBNAME=$(basename $0|grep -P -o '(?<=elb_requests_).*')
 
 if [ -z "$LBNAME" ]; then
 	echo 'Cannot read lb name' >&2
