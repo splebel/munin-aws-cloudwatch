@@ -13,7 +13,7 @@ fi
 case $1 in
 	config)
 		echo "graph_title $ASNAME network traffic"
-		echo "graph_vlabel bytes in (-) / out (+) per sec"
+		echo "graph_vlabel bits in (-) / out (+) per sec"
 		echo "graph_category $NAMESPACE"
 		echo 'in.label in'
 		echo 'out.label out'
@@ -52,7 +52,7 @@ export JAVA_HOME
 
 METRICNAME=NetworkIn
 
-$AWS_CLOUDWATCH_HOME/bin/mon-get-stats $METRICNAME -I $AWS_ACCESS_KEY_ID -S $AWS_SECRET_ACCESS_KEY -n $NAMESPACE --dimensions $DIMENSIONS -s Average --period 300 --start-time $(date --iso-8601=seconds --date="5 minutes ago")  > $TMPFILE
+$AWS_CLOUDWATCH_HOME/bin/mon-get-stats $METRICNAME -I $AWS_ACCESS_KEY_ID -S $AWS_SECRET_ACCESS_KEY -n $NAMESPACE --dimensions $DIMENSIONS -s Sum --period 300 --start-time $(date --iso-8601=seconds --date="5 minutes ago")  > $TMPFILE
 
 if [ $? -ne 0 ]; then
 	echo 'Failed to run mon-get-stats' >&2
@@ -60,11 +60,11 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
-IN=$(printf %0.f $(echo $(cat $TMPFILE|awk '{print $3}' | sed -e 's/[eE]+*/\*10\^/')/60*8|bc))
+IN=$(printf %0.f $(echo "($(cat $TMPFILE|awk '{print $3}' | sed -e 's/[eE]+*/\*10\^/')) / 300 * 8"|bc))
 
 METRICNAME=NetworkOut
 
-$AWS_CLOUDWATCH_HOME/bin/mon-get-stats $METRICNAME -I $AWS_ACCESS_KEY_ID -S $AWS_SECRET_ACCESS_KEY -n $NAMESPACE --dimensions $DIMENSIONS -s Average --period 300 --start-time $(date --iso-8601=seconds --date="5 minutes ago")  > $TMPFILE
+$AWS_CLOUDWATCH_HOME/bin/mon-get-stats $METRICNAME -I $AWS_ACCESS_KEY_ID -S $AWS_SECRET_ACCESS_KEY -n $NAMESPACE --dimensions $DIMENSIONS -s Sum --period 300 --start-time $(date --iso-8601=seconds --date="5 minutes ago")  > $TMPFILE
 
 if [ $? -ne 0 ]; then
  	echo 'Failed to run mon-get-stats' >&2
@@ -72,7 +72,8 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
-OUT=$(printf %0.f $(echo $(cat $TMPFILE|awk '{print $3}' | sed -e 's/[eE]+*/\*10\^/')/60*8|bc))
+
+OUT=$(printf %0.f $(echo "($(cat $TMPFILE|awk '{print $3}' | sed -e 's/[eE]+*/\*10\^/')) / 300 * 8"|bc))
 
 
 rm $TMPFILE
