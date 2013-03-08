@@ -71,7 +71,7 @@ CURRENT=$(tail -n1 $TMPFILE|awk '{print $3}')
 MONTH_TS=$(date -u +%s --date="$(date -u +%m/01/%Y)")
 REPORT_TS=$(date -u +%s --date="$(tail -n1 $TMPFILE|awk '{print $1 " " $2}')")
 ELAPSED_MIN=$((($REPORT_TS - $MONTH_TS ) / 60))
-ESTIMATED=$(echo "$CURRENT * 86400 / $ELAPSED_MIN"|bc)
+ESTIMATED=$(echo "$CURRENT * 43200 / $ELAPSED_MIN"|bc)
 
 rm $TMPFILE
 
