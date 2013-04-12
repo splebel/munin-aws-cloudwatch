@@ -1,0 +1,191 @@
+#!/bin/sh
+
+DBINSTANCE=$(basename $0|grep -P -o '(?<=rds_).*(?=_)')
+METRICNAME=$(basename $0|grep -P -o '(?<=_)[a-z]*$')
+
+DIMENSIONS=DBInstanceIdentifier=$DBINSTANCE
+NAMESPACE=AWS/RDS
+
+if [ -z "$DBINSTANCE" ]; then
+	echo 'Cannot read db instance name' >&2
+	exit 1
+fi
+
+if [ -z "$METRICNAME" ]; then
+        echo 'Cannot read metric name' >&2
+        exit 1
+fi
+
+case $METRICNAME in
+	cpu)
+		METRICNAME=CPUUtilization
+		graphtitle="CPU Usage"
+		graphbase="1000"
+		graphvlabel="%"
+		graphcategory="System"
+		graphinfo="This graph shows the CPU utilization of the RDS instance"
+		;;
+
+	connections)
+		METRICNAME=DatabaseConnections
+		graphtitle="Connections"
+		graphbase="1000"
+		graphvlabel="Number of connections"
+		graphcategory="Mysql"
+		graphinfo="Number of incoming connections to the database instance"
+		;;
+
+	mem)
+		METRICNAME=FreeableMemory
+		graphtitle="Freeable Memory"
+		graphbase="1024"
+		graphvlabel="Memory in Bytes"
+		graphcategory="System"
+		graphinfo="Available memory to the database instance"
+		;;
+
+	freespace)
+		METRICNAME=FreeStorageSpace
+		graphtitle="Storage Free"
+		graphbase="1024"
+		graphvlabel="Storage space in bytes"
+		graphcategory="Disk"
+		graphinfo="This graph shows the Amount of free space left on the database instance"
+		;;
+
+	readiops)
+		METRICNAME=ReadIOPS
+		graphtitle="Read IOPS"
+		graphbase="1000"
+		graphvlabel="Reads per second"
+		graphcategory="Mysql"
+		graphinfo="This graph shows the number of Read IOPS on the database instance"
+		;;
+
+	readlatency)
+		METRICNAME=ReadLatency
+		graphtitle="Read Latency"
+		graphbase="1000"
+		graphvlabel="Read Latency in seconds"
+		graphcategory="Mysql"
+		graphinfo="This graph shows the amount of latency on reads"
+		;;
+
+	readthroughput)
+		METRICNAME=ReadThroughput
+		graphtitle="Read Throughput"
+		graphbase="1024"
+		graphvlabel="Throughput in bytes / second"
+		graphcategory="Mysql"
+		graphinfo="This graph shows read throughput in bytes per second"
+		;;
+
+	swap)
+		METRICNAME=SwapUsage
+		graphtitle="Swap Usage"
+		graphbase="1024"
+		graphvlabel="Swap usage in bytes"
+		graphcategory="System"
+		graphinfo="This graph shows the amount of swapfie used by the database instance"
+		;;
+
+	writeiops)
+		METRICNAME=WriteIOPS
+		graphtitle="Write IOPS"
+		graphbase="1000"
+		graphvlabel="Writes per second"
+		graphcategory="Mysql"
+		graphinfo="This graph shows the number of Write IOPS on the database instance"
+		;;
+
+	writelatency)
+		METRICNAME=WriteLatency
+		graphtitle="Write Latency"
+		graphbase="1000"
+		graphvlabel="Write Latency in seconds"
+		graphcategory="Mysql"
+		graphinfo="This graph shows the amount of latency on Writes"
+		;;
+
+	writethroughput)
+		METRICNAME=WriteThroughput
+		graphtitle="Write Throughput"
+		graphbase="1024"
+		graphvlabel="Throughput in bytes / second"
+		graphcategory="Mysql2"
+		graphinfo="This graph shows Write throughput in bytes per second"
+		;;
+
+	*)
+		echo 'Unkown metric'
+		exit 1
+esac
+
+
+case $1 in
+	config)
+		echo "host_name $dbinstance"
+		echo "graph_title $graphtitle"
+		echo "graph_args --base $graphbase -l 0 "
+		echo "graph_vlabel $graphvlabel"
+		echo "graph_category $graphcategory"
+		echo "graph_info $graphinfo"
+		echo "average.label $graphavglabel"
+		echo 'average.draw LINE2'
+		echo 'average.info Average'
+		echo "min.label $graphminlabel"
+		echo 'min.draw LINE2'
+		echo 'min.info Minimum'
+		echo "max.label $graphmaxlabel"
+		echo 'max.draw LINE2'
+		echo 'max.info Maximum'
+		exit 0
+esac
+
+if [ -z "$JAVA_HOME" ]; then
+	JAVA_HOME=$(readlink -f $(which java)|grep -P -o '.*(?=/bin/java)')
+fi
+
+if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+	echo 'AWS ID not specified. Set env.AWS_ACCESS_KEY_ID' >&2
+	exit 1
+fi
+
+if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+	echo 'AWS Secret not specified. Set env.AWS_SECRET_ACCESS_KEY' >&2
+	exit 1
+fi
+
+if [ ! -x $AWS_CLOUDWATCH_HOME/bin/mon-get-stats ]; then
+	echo 'Cannot execute mon-get-stats. Set env.AWS_CLOUDWATCH_HOME' >&2
+	exit 1
+fi
+
+TMPFILE=$(mktemp)
+if [ ! -w $TMPFILE ]; then
+	echo "Cannot write to temp file $TMPFILE" >&2
+	exit 1
+fi
+
+export AWS_CLOUDWATCH_HOME
+export JAVA_HOME
+
+$AWS_CLOUDWATCH_HOME/bin/mon-get-stats $METRICNAME -I $AWS_ACCESS_KEY_ID -S $AWS_SECRET_ACCESS_KEY -n $NAMESPACE --dimensions $DIMENSIONS -s "Average,Minimum,Maximum" --period 300 --start-time $(date --iso-8601=seconds --date="5 minutes ago")|tail -1  > $TMPFILE
+
+if [ $? -ne 0 ]; then
+ 	echo 'Failed to run mon-get-stats' >&2
+	rm $TMPFILE
+	exit 1
+fi
+
+avg=$(cat $TMPFILE|awk '{print $3}')
+min=$(cat $TMPFILE|awk '{print $4}')
+max=$(cat $TMPFILE|awk '{print $5}')
+
+rm $TMPFILE
+
+echo "average.value $avg"
+echo "min.value $min"
+echo "max.value $max"
+
+exit 0
