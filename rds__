@@ -124,7 +124,7 @@ esac
 
 case $1 in
 	config)
-		echo "host_name $dbinstance"
+		echo "host_name $DBINSTANCE"
 		echo "graph_title $graphtitle"
 		echo "graph_args --base $graphbase -l 0 "
 		echo "graph_vlabel $graphvlabel"
