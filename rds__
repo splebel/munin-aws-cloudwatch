@@ -1,9 +1,6 @@
 #!/usr/bin/env ruby
 require 'rubygems'
-require 'getopt/long'
 require 'AWS'
-
-opt = Getopt::Long.getopts(['--config'])
 
 dbinstance = File.basename(__FILE__).scan(/(?<=rds_).*(?=_)/).first
 metricname = File.basename(__FILE__).scan(/(?<=_)[a-z]*$/).first
@@ -106,7 +103,7 @@ else
   exit 1
 end
 
-if opt["config"]
+if ARGV.first == 'config'
   puts "host_name #{dbinstance}"
   puts "graph_title #{graphtitle}"
   puts "graph_args --base #{graphbase} -l 0"
