@@ -31,6 +31,76 @@ when 'cpu'
   graphvlabel = '%'
   graphcategory = 'System'
   graphinfo = 'This graph shows the CPU utilization of the RDS instance'
+when 'connections'
+  metricname = 'DatabaseConnections'
+  graphtitle = 'Connections'
+  graphbase = 1000
+  graphvlabel = 'Number of connections'
+  graphcategory = 'Mysql'
+  graphinfo = 'Number of incoming connections to the database instance'
+when 'mem'
+  metricname = 'FreeableMemory'
+  graphtitle = 'Freeable Memory'
+  graphbase = 1024
+  graphvlabel = 'Memory in Bytes'
+  graphcategory = 'System'
+  graphinfo = 'Available memory to the database instance'
+when 'freespace'
+  metricname = 'FreeStorageSpace'
+  graphtitle = 'Storage Free'
+  graphbase = 1024
+  graphvlabel = 'Storage space in bytes'
+  graphcategory = 'Disk'
+  graphinfo = 'This graph shows the Amount of free space left on the database instance'
+when 'readiops'
+  metricname = 'ReadIOPS'
+  graphtitle = 'Read IOPS'
+  graphbase = 1000
+  graphvlabel = 'Reads per second'
+  graphcategory = 'Mysql'
+  graphinfo = 'This graph shows the number of Read IOPS on the database instance'
+when 'readlatency'
+  metricname = 'ReadLatency'
+  graphtitle = 'Read Latency'
+  graphbase = 1000
+  graphvlabel = 'Read Latency in seconds'
+  graphcategory = 'Mysql'
+  graphinfo = 'This graph shows the amount of latency on reads'
+when 'readthroughput'
+  metricname = 'ReadThroughput'
+  graphtitle = 'Read Throughput'
+  graphbase = 1024
+  graphvlabel = 'Throughput in bytes / second'
+  graphcategory = 'Mysql'
+  graphinfo = 'This graph shows read throughput in bytes per second'
+when 'swap'
+  metricname = 'SwapUsage'
+  graphtitle = 'Swap Usage'
+  graphbase = 1024
+  graphvlabel = 'Swap usage in bytes'
+  graphcategory = 'System'
+  graphinfo = 'This graph shows the amount of swapfie used by the database instance'
+when 'writeiops'
+  metricname = 'WriteIOPS'
+  graphtitle = 'Write IOPS'
+  graphbase = 1000
+  graphvlabel = 'Writes per second'
+  graphcategory = 'Mysql'
+  graphinfo = 'This graph shows the number of Write IOPS on the database instance'
+when 'writelatency'
+  metricname = 'WriteLatency'
+  graphtitle = 'Write Latency'
+  graphbase = 1000
+  graphvlabel = 'Write Latency in seconds'
+  graphcategory = 'Mysql'
+  graphinfo = 'This graph shows the amount of latency on Writes'
+when 'writethroughput'
+  metricname = 'WriteThroughput'
+  graphtitle = 'Write Throughput'
+  graphbase = '1024'
+  graphvlabel = 'Throughput in bytes / second'
+  graphcategory = 'Mysql'
+  graphinfo = 'This graph shows Write throughput in bytes per second'
 else
   puts 'Unknown metric'
   exit 1
@@ -39,7 +109,7 @@ end
 if opt["config"]
   puts "host_name #{dbinstance}"
   puts "graph_title #{graphtitle}"
-  puts "graph_args --base #{graphbase} -l 0 "
+  puts "graph_args --base #{graphbase} -l 0"
   puts "graph_vlabel #{graphvlabel}"
   puts "graph_category #{graphcategory}"
   puts "graph_info #{graphinfo}"
