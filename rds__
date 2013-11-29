@@ -111,11 +111,11 @@ if ARGV.first == 'config'
   puts "graph_category #{graphcategory}"
   puts "graph_info #{graphinfo}"
   puts 'average.draw LINE2'
-  puts 'average.info average'
+  puts 'average.label average'
   puts 'min.draw LINE2'
-  puts 'min.info minimum'
+  puts 'min.label minimum'
   puts 'max.draw LINE2'
-  puts 'max.info maximum'
+  puts 'max.label maximum'
   exit 0
 end
 
