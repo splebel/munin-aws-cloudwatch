@@ -16,12 +16,12 @@ end
 
 if ARGV.first == 'config'
   puts "graph_title #{asname} network traffic"
-  echo 'graph_vlabel bits in (-) / out (+) per sec'
-  echo "graph_category #{namespace}"
-  echo 'in.label in'
-  echo 'out.label out'
-  echo 'out.negative in'
-  echo 'in.graph no'
+  puts 'graph_vlabel bits in (-) / out (+) per sec'
+  puts "graph_category #{namespace}"
+  puts 'in.label in'
+  puts 'out.label out'
+  puts 'out.negative in'
+  puts 'in.graph no'
   exit 0
 end
 
