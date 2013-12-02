@@ -1,84 +1,60 @@
-#!/bin/sh
+#!/usr/bin/env ruby
+require 'rubygems'
+require 'AWS'
 
-ASNAME=$(basename $0|grep -P -o '(?<=ec2_asnetwork_).*')
+asname = File.basename(__FILE__).scan(/(?<=ec2_asnetwork_).*/).first
 
-DIMENSIONS=AutoScalingGroupName=$ASNAME
-NAMESPACE=AWS/EC2
+dimensions = "AutoScalingGroupName=#{asname}"
+namespace = 'AWS/EC2'
 
-if [ -z "$ASNAME" ]; then
-	echo 'Cannot read autoscaling group name' >&2
-	exit 1
-fi
+timeperiod = 300
 
-case $1 in
-	config)
-		echo "graph_title $ASNAME network traffic"
-		echo "graph_vlabel bits in (-) / out (+) per sec"
-		echo "graph_category $NAMESPACE"
-		echo 'in.label in'
-		echo 'out.label out'
-		echo 'out.negative in'
-		echo 'in.graph no'
-		exit 0;;
-esac
+if asname.empty?
+  puts 'Cannot read autoscaling group name'
+  exit 1
+end
 
-if [ -z "$JAVA_HOME" ]; then
-	JAVA_HOME=$(readlink -f $(which java)|grep -P -o '.*(?=/bin/java)')
-fi
+if ARGV.first == 'config'
+  puts "graph_title #{asname} network traffic"
+  echo 'graph_vlabel bits in (-) / out (+) per sec'
+  echo "graph_category #{namespace}"
+  echo 'in.label in'
+  echo 'out.label out'
+  echo 'out.negative in'
+  echo 'in.graph no'
+  exit 0
+end
 
-if [ -z "$AWS_ACCESS_KEY_ID" ]; then
-	echo 'AWS ID not specified. Set env.AWS_ACCESS_KEY_ID' >&2
-	exit 1
-fi
+if ENV['AWS_ACCESS_KEY_ID'].nil?
+  puts 'AWS ID not specified. Set env.AWS_ACCESS_KEY_ID'
+  exit 1
+else
+  access_key_id = ENV['AWS_ACCESS_KEY_ID']
+end
 
-if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
-	echo 'AWS Secret not specified. Set env.AWS_SECRET_ACCESS_KEY' >&2
-	exit 1
-fi
+if ENV['AWS_SECRET_ACCESS_KEY'].nil?
+  puts 'AWS Secret not specified. Set env.AWS_SECRET_ACCESS_KEY'
+  exit 1
+else
+  secret_access_key = ENV['AWS_SECRET_ACCESS_KEY']
+end
 
-if [ ! -x $AWS_CLOUDWATCH_HOME/bin/mon-get-stats ]; then
-	echo 'Cannot execute mon-get-stats. Set env.AWS_CLOUDWATCH_HOME' >&2
-	exit 1
-fi
+begin
+  cw = AWS::Cloudwatch::Base.new(:access_key_id => access_key_id, :secret_access_key => secret_access_key)
+rescue Exception => e
+  puts 'Unknown Exception:', e.inspect
+  exit 3
+end
 
-TMPFILE=$(mktemp)
-if [ ! -w $TMPFILE ]; then
-	echo "Cannot write to temp file $TMPFILE" >&2
-	exit 1
-fi
+metricname = 'NetworkIn'
+res = cw.get_metric_statistics(:namespace => namespace, :measure_name => metricname, :statistics => "Sum", :dimensions => dimensions, :period => timeperiod, :start_time => (Time.now() - timeperiod) )
+bw_in = res['GetMetricStatisticsResult']['Datapoints']['member'].first['Sum']
 
-export AWS_CLOUDWATCH_HOME
-export JAVA_HOME
+metricname = 'NetworkOut'
+res = cw.get_metric_statistics(:namespace => namespace, :measure_name => metricname, :statistics => "Sum", :dimensions => dimensions, :period => timeperiod, :start_time => (Time.now() - timeperiod) )
+bw_out = res['GetMetricStatisticsResult']['Datapoints']['member'].first['Sum']
 
-METRICNAME=NetworkIn
-
-$AWS_CLOUDWATCH_HOME/bin/mon-get-stats $METRICNAME -I $AWS_ACCESS_KEY_ID -S $AWS_SECRET_ACCESS_KEY -n $NAMESPACE --dimensions $DIMENSIONS -s Sum --period 300 --start-time $(date --iso-8601=seconds --date="5 minutes ago")  > $TMPFILE
-
-if [ $? -ne 0 ]; then
-	echo 'Failed to run mon-get-stats' >&2
-	rm $TMPFILE
-	exit 1
-fi
-
-IN=$(printf %0.f $(echo "($(cat $TMPFILE|awk '{print $3}' | sed -e 's/[eE]+*/\*10\^/')) / 300 * 8"|bc))
-
-METRICNAME=NetworkOut
-
-$AWS_CLOUDWATCH_HOME/bin/mon-get-stats $METRICNAME -I $AWS_ACCESS_KEY_ID -S $AWS_SECRET_ACCESS_KEY -n $NAMESPACE --dimensions $DIMENSIONS -s Sum --period 300 --start-time $(date --iso-8601=seconds --date="5 minutes ago")  > $TMPFILE
-
-if [ $? -ne 0 ]; then
- 	echo 'Failed to run mon-get-stats' >&2
-	rm $TMPFILE
-	exit 1
-fi
-
-
-OUT=$(printf %0.f $(echo "($(cat $TMPFILE|awk '{print $3}' | sed -e 's/[eE]+*/\*10\^/')) / 300 * 8"|bc))
-
-
-rm $TMPFILE
-
-echo "in.value $IN"
-echo "out.value $OUT"
+puts "in.value #{bw_in}"
+puts "out.value #{bw_out}"
 
 exit 0
