@@ -19,7 +19,7 @@ if ARGV.first == 'config'
   puts "graph_title #{lbname} 500 error"
   puts 'graph_vlabel errors'
   puts "graph_category #{namespace}"
-  puts 'count.label'
+  puts 'count.label count'
   exit 0
 end
 
