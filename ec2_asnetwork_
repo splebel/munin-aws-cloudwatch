@@ -48,13 +48,13 @@ end
 
 metricname = 'NetworkIn'
 res = cw.get_metric_statistics(:namespace => namespace, :measure_name => metricname, :statistics => "Sum", :dimensions => dimensions, :period => timeperiod, :start_time => (Time.now() - timeperiod) )
-bw_in = res['GetMetricStatisticsResult']['Datapoints']['member'].first['Sum']
+bw_in = res['GetMetricStatisticsResult']['Datapoints']['member'].first['Sum'].to_f/300*8
 
 metricname = 'NetworkOut'
 res = cw.get_metric_statistics(:namespace => namespace, :measure_name => metricname, :statistics => "Sum", :dimensions => dimensions, :period => timeperiod, :start_time => (Time.now() - timeperiod) )
-bw_out = res['GetMetricStatisticsResult']['Datapoints']['member'].first['Sum']
+bw_out = res['GetMetricStatisticsResult']['Datapoints']['member'].first['Sum'].to_f/300*8
 
-puts "in.value #{bw_in}"
-puts "out.value #{bw_out}"
+puts "in.value #{bw_in.to_i}"
+puts "out.value #{bw_out.to_i}"
 
 exit 0
